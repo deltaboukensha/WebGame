@@ -24,6 +24,7 @@ const xMax = 30;
 const yMin = 0;
 const yMax = 20;
 const entityList = [];
+let weaponCoolDown = 0;
 
 //create some objects
 bodyDef.type = b2Body.b2_dynamicBody;
@@ -68,19 +69,19 @@ const v = new b2Vec2(1, 0);
 const gameLoop = (newTime) => {
     const deltaTime = newTime - oldTime;
     const playerAngle = player.GetBody().GetAngle();
-    const forwardVector = new b2Vec2(Math.cos(playerAngle), Math.sin(playerAngle));
+    const playerDirection = new b2Vec2(Math.cos(playerAngle), Math.sin(playerAngle));
     const rotationPower = 1.0;
     const forwardPower = 2.0;
 
     if (keyPress["w"]) {
         const angle = player.GetBody().GetAngle();
-        const forceVector = forwardVector.Copy()
+        const forceVector = playerDirection.Copy()
         forceVector.Multiply(forwardPower);
         player.GetBody().ApplyForce(forceVector, player.GetBody().GetWorldCenter());
     }
 
     if (keyPress["s"]) {
-        const forceVector = forwardVector.GetNegative().Copy()
+        const forceVector = playerDirection.GetNegative().Copy()
         forceVector.Multiply(forwardPower);
         player.GetBody().ApplyForce(forceVector, player.GetBody().GetWorldCenter());
     }
@@ -91,6 +92,23 @@ const gameLoop = (newTime) => {
 
     if (keyPress["d"]) {
         player.GetBody().ApplyTorque(+rotationPower);
+    }
+
+    weaponCoolDown -= deltaTime;
+
+    if (keyPress[" "]) {
+        if (weaponCoolDown < 0) {
+            fixDef.shape = new b2CircleShape(0.1);
+            const bullet = world.CreateBody(bodyDef).CreateFixture(fixDef);
+            const bulletDirection = new b2Vec2(Math.cos(playerAngle), Math.sin(playerAngle));
+            const bulletVelocity = bulletDirection.Copy();
+            const bulletPower = 10.0;
+            bulletVelocity.Multiply(bulletPower);
+            bullet.GetBody().SetLinearVelocity(bulletVelocity);
+            bullet.GetBody().SetPosition(player.GetBody().GetPosition());
+            bullet.GetBody().SetAngle(player.GetBody().GetAngle());
+            weaponCoolDown = 1000;
+        }
     }
 
     entityList.forEach(entity => {
@@ -126,7 +144,11 @@ const gameLoop = (newTime) => {
     window.requestAnimationFrame(gameLoop);
 };
 
-window.requestAnimationFrame(gameLoop);
+//initiate loop
+window.requestAnimationFrame((newTime) => {
+    oldTime = newTime;
+    window.requestAnimationFrame(gameLoop);
+});
 
 document.addEventListener('keypress', (e) => {
     keyPress[e.key] = true;
