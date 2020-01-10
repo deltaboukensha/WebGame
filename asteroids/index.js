@@ -19,6 +19,11 @@ const fixDef = new b2FixtureDef;
 fixDef.density = 1.0;
 fixDef.friction = 0.5;
 fixDef.restitution = 0.2;
+const xMin = 0;
+const xMax = 30;
+const yMin = 0;
+const yMax = 20;
+const entityList = [];
 
 //create some objects
 bodyDef.type = b2Body.b2_dynamicBody;
@@ -36,15 +41,19 @@ for (var i = 0; i < 10; i++) {
     }
     bodyDef.position.x = Math.random() * 10;
     bodyDef.position.y = Math.random() * 10;
-    world.CreateBody(bodyDef).CreateFixture(fixDef);
+    const entity = world.CreateBody(bodyDef).CreateFixture(fixDef);
+    entityList.push(entity);
 }
 
 //create player
 bodyDef.position.x = 10;
 bodyDef.position.y = 10;
 fixDef.shape = new b2PolygonShape;
-fixDef.shape.SetAsBox(0.5, 0.5);
+// fixDef.shape.SetAsBox(0.5, 0.5);
+fixDef.shape.SetAsArray([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)], 3);
+
 const player = world.CreateBody(bodyDef).CreateFixture(fixDef);
+entityList.push(player);
 
 const debugDraw = new b2DebugDraw();
 debugDraw.SetSprite(g);
@@ -54,30 +63,60 @@ debugDraw.SetLineThickness(1.0);
 debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
 world.SetDebugDraw(debugDraw);
 
+const v = new b2Vec2(1, 0);
+
 const gameLoop = (newTime) => {
     const deltaTime = newTime - oldTime;
     const playerAngle = player.GetBody().GetAngle();
     const forwardVector = new b2Vec2(Math.cos(playerAngle), Math.sin(playerAngle));
     const rotationPower = 1.0;
+    const forwardPower = 2.0;
 
     if (keyPress["w"]) {
         const angle = player.GetBody().GetAngle();
-        const forceVector = forwardVector;
+        const forceVector = forwardVector.Copy()
+        forceVector.Multiply(forwardPower);
         player.GetBody().ApplyForce(forceVector, player.GetBody().GetWorldCenter());
     }
-    
+
     if (keyPress["s"]) {
-        const forceVector = forwardVector.GetNegative();
+        const forceVector = forwardVector.GetNegative().Copy()
+        forceVector.Multiply(forwardPower);
         player.GetBody().ApplyForce(forceVector, player.GetBody().GetWorldCenter());
     }
-    
+
     if (keyPress["a"]) {
         player.GetBody().ApplyTorque(-rotationPower);
     }
-    
+
     if (keyPress["d"]) {
         player.GetBody().ApplyTorque(+rotationPower);
     }
+
+    entityList.forEach(entity => {
+        const body = entity.GetBody();
+        const position = body.GetPosition();
+        let x = position.x;
+        let y = position.y;
+
+        if (x < xMin) {
+            x = xMax;
+        }
+
+        if (x > xMax) {
+            x = xMin;
+        }
+
+        if (y < yMin) {
+            y = yMax;
+        }
+
+        if (y > yMax) {
+            y = yMin;
+        }
+
+        body.SetPosition(new b2Vec2(x, y));
+    });
 
     world.Step(deltaTime * 0.001, 10, 10);
     world.DrawDebugData();
