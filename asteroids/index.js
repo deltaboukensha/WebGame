@@ -8,6 +8,7 @@ const b2MassData = Box2D.Collision.Shapes.b2MassData;
 const b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
 const b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
 const b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
+const b2ContactListener = Box2D.Dynamics.b2ContactListener;
 
 const canvas = document.getElementById("myCanvas");
 const g = canvas.getContext("2d");
@@ -23,18 +24,28 @@ const xMin = 0;
 const xMax = 30;
 const yMin = 0;
 const yMax = 20;
-const entityList = [];
 let weaponCoolDown = 0;
 
-//create some objects
 bodyDef.type = b2Body.b2_dynamicBody;
+
+const createBox = (width, height, x, y) => {
+    fixDef.shape = new b2PolygonShape;
+    fixDef.shape.SetAsBox(width, height);
+    bodyDef.position.x = x;
+    bodyDef.position.y = y;
+    const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
+    const customEntity = {
+        Explode: () => {
+            console.log("explode");
+        }
+    };
+    fixture.SetUserData(customEntity);
+};
+
+//create some objects
 for (var i = 0; i < 10; i++) {
     if (Math.random() > 0.5) {
-        fixDef.shape = new b2PolygonShape;
-        fixDef.shape.SetAsBox(
-            Math.random() + 0.1 //half width
-            , Math.random() + 0.1 //half height
-        );
+        createBox(Math.random() + 0.1, Math.random() + 0.1, Math.random() * 10, Math.random() * 10);
     } else {
         fixDef.shape = new b2CircleShape(
             Math.random() + 0.1 //radius
@@ -42,8 +53,19 @@ for (var i = 0; i < 10; i++) {
     }
     bodyDef.position.x = Math.random() * 10;
     bodyDef.position.y = Math.random() * 10;
-    const entity = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    entityList.push(entity);
+    const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
+    const entity = {
+        GetBody: () => {
+            return fixture.GetBody();
+        },
+        GetFixture: () => {
+            return fixture;
+        },
+        Explode: () => {
+        }
+    };
+    fixture.SetUserData(entity);
+    fixture.GetBody().SetUserData(entity);
 }
 
 //create player
@@ -53,8 +75,51 @@ fixDef.shape = new b2PolygonShape;
 // fixDef.shape.SetAsBox(0.5, 0.5);
 fixDef.shape.SetAsArray([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)], 3);
 
-const player = world.CreateBody(bodyDef).CreateFixture(fixDef);
-entityList.push(player);
+const createPlayer = () => {
+    const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
+    const entity = {
+        GetBody: () => {
+            return fixture.GetBody();
+        },
+        GetFixture: () => {
+            return fixture;
+        },
+    };
+    fixture.SetUserData(entity);
+    fixture.GetBody().SetUserData(entity);
+    return entity;
+};
+
+const player = createPlayer();
+
+const destroyEntity = (entity) => {
+    world.DestroyBody(entity.GetBody());
+};
+
+const createBullet = (player) => {
+    fixDef.shape = new b2CircleShape(0.1);
+    const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
+    const entity = {
+        GetBody: () => {
+            return fixture.GetBody();
+        },
+        GetFixture: () => {
+            return fixture;
+        },
+    };
+    fixture.SetUserData(entity);
+    fixture.GetBody().SetUserData(entity);
+    
+    const direction = new b2Vec2(Math.cos(player.GetBody().GetAngle()), Math.sin(player.GetBody().GetAngle()));
+    const velocity = direction.Copy();
+    const power = 10.0;
+    velocity.Multiply(power);
+    entity.GetBody().SetLinearVelocity(velocity);
+    entity.GetBody().SetPosition(player.GetBody().GetPosition());
+    entity.GetBody().SetAngle(player.GetBody().GetAngle());
+    
+    return entity;
+};
 
 const debugDraw = new b2DebugDraw();
 debugDraw.SetSprite(g);
@@ -64,17 +129,31 @@ debugDraw.SetLineThickness(1.0);
 debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
 world.SetDebugDraw(debugDraw);
 
-const v = new b2Vec2(1, 0);
+const contactListener = new b2ContactListener();
+
+contactListener.BeginContact = (contact) => {
+    const entityA = contact.GetFixtureA().GetUserData();
+    const entityB = contact.GetFixtureB().GetUserData();
+    
+    if(entityA.Explode){
+        entityA.Explode();
+    }
+    
+    if(entityB.Explode){
+        entityB.Explode();
+    }
+}
+
+world.SetContactListener(contactListener);
 
 const gameLoop = (newTime) => {
     const deltaTime = newTime - oldTime;
     const playerAngle = player.GetBody().GetAngle();
     const playerDirection = new b2Vec2(Math.cos(playerAngle), Math.sin(playerAngle));
     const rotationPower = 1.0;
-    const forwardPower = 2.0;
+    const forwardPower = 10.0;
 
     if (keyPress["w"]) {
-        const angle = player.GetBody().GetAngle();
         const forceVector = playerDirection.Copy()
         forceVector.Multiply(forwardPower);
         player.GetBody().ApplyForce(forceVector, player.GetBody().GetWorldCenter());
@@ -98,43 +177,41 @@ const gameLoop = (newTime) => {
 
     if (keyPress[" "]) {
         if (weaponCoolDown < 0) {
-            fixDef.shape = new b2CircleShape(0.1);
-            const bullet = world.CreateBody(bodyDef).CreateFixture(fixDef);
-            const bulletDirection = new b2Vec2(Math.cos(playerAngle), Math.sin(playerAngle));
-            const bulletVelocity = bulletDirection.Copy();
-            const bulletPower = 10.0;
-            bulletVelocity.Multiply(bulletPower);
-            bullet.GetBody().SetLinearVelocity(bulletVelocity);
-            bullet.GetBody().SetPosition(player.GetBody().GetPosition());
-            bullet.GetBody().SetAngle(player.GetBody().GetAngle());
+            createBullet(player);
             weaponCoolDown = 1000;
         }
     }
+    
+    const teleportBorder = () => {
+        let body = world.GetBodyList();
+        
+        while(body){
+            const position = body.GetPosition();
+            let x = position.x;
+            let y = position.y;
 
-    entityList.forEach(entity => {
-        const body = entity.GetBody();
-        const position = body.GetPosition();
-        let x = position.x;
-        let y = position.y;
+            if (x < xMin) {
+                x = xMax;
+            }
 
-        if (x < xMin) {
-            x = xMax;
+            if (x > xMax) {
+                x = xMin;
+            }
+
+            if (y < yMin) {
+                y = yMax;
+            }
+
+            if (y > yMax) {
+                y = yMin;
+            }
+
+            body.SetPosition(new b2Vec2(x, y));
+            body = body.GetNext();
         }
-
-        if (x > xMax) {
-            x = xMin;
-        }
-
-        if (y < yMin) {
-            y = yMax;
-        }
-
-        if (y > yMax) {
-            y = yMin;
-        }
-
-        body.SetPosition(new b2Vec2(x, y));
-    });
+    };
+    
+    teleportBorder();
 
     world.Step(deltaTime * 0.001, 10, 10);
     world.DrawDebugData();
