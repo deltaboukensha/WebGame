@@ -45,6 +45,26 @@ class Entity {
 
     Explode() {}
 };
+
+class RemovalItem {
+    constructor(entity, delay) {
+        this.entity = entity;
+        this.delay = delay;
+    }
+    
+    GetEntity(){
+        return this.entity;
+    }
+    
+    GetDelay(){
+        return this.delay;
+    }
+    
+    SetDelay(delay){
+        this.delay = delay;
+    }
+}
+
 class Player extends Entity {
     constructor(fixture, body) {
         super(fixture, body);
@@ -67,7 +87,7 @@ class Bullet extends Entity {
     }
     
     Explode() {
-        removalList.push(this);
+        removalList.push(new RemovalItem(this, 100));
     }
 };
 
@@ -131,6 +151,7 @@ const createBullet = (player) => {
     entity.GetBody().SetLinearVelocity(velocity);
     entity.GetBody().SetPosition(b2Math.AddVV(player.GetBody().GetPosition(), offset));
     entity.GetBody().SetAngle(player.GetBody().GetAngle());
+    entity.GetBody().SetBullet(true);
 
     return entity;
 };
@@ -231,10 +252,14 @@ const gameLoop = (newTime) => {
     world.DrawDebugData();
     world.ClearForces();
     
-    {
-        let entity;
-        while(entity = removalList.pop()){
-            world.DestroyBody(entity.GetBody());
+    for (let i = removalList.length - 1; i >= 0; i--) {
+        const removalItem = removalList[i];
+        const delay = removalItem.GetDelay() - deltaTime;
+        removalItem.SetDelay(delay);
+        
+        if(delay < 0){
+            world.DestroyBody(removalItem.GetEntity().GetBody());
+            removalList.splice(i, 1);
         }
     }
 
