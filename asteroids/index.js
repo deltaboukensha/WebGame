@@ -9,6 +9,7 @@ const b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
 const b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
 const b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
 const b2ContactListener = Box2D.Dynamics.b2ContactListener;
+const b2Math = Box2D.Common.Math.b2Math;
 
 const canvas = document.getElementById("myCanvas");
 const g = canvas.getContext("2d");
@@ -25,8 +26,8 @@ const xMax = 30;
 const yMin = 0;
 const yMax = 20;
 let weaponCoolDown = 0;
-
 bodyDef.type = b2Body.b2_dynamicBody;
+const removalList = [];
 
 class Entity {
     constructor(fixture, body) {
@@ -56,13 +57,17 @@ class Box extends Entity {
     }
 
     Explode() {
-        console.log("explode");
+        // console.log("explode");
     }
 };
 
 class Bullet extends Entity {
     constructor(fixture, body) {
         super(fixture, body);
+    }
+    
+    Explode() {
+        removalList.push(this);
     }
 };
 
@@ -110,10 +115,6 @@ const createPlayer = () => {
 
 const player = createPlayer();
 
-const destroyEntity = (entity) => {
-    world.DestroyBody(entity.GetBody());
-};
-
 const createBullet = (player) => {
     fixDef.shape = new b2CircleShape(0.1);
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
@@ -123,10 +124,12 @@ const createBullet = (player) => {
 
     const direction = new b2Vec2(Math.cos(player.GetBody().GetAngle()), Math.sin(player.GetBody().GetAngle()));
     const velocity = direction.Copy();
+    const offset = direction.Copy();
+    offset.Multiply(2);
     const power = 10.0;
     velocity.Multiply(power);
     entity.GetBody().SetLinearVelocity(velocity);
-    entity.GetBody().SetPosition(player.GetBody().GetPosition());
+    entity.GetBody().SetPosition(b2Math.AddVV(player.GetBody().GetPosition(), offset));
     entity.GetBody().SetAngle(player.GetBody().GetAngle());
 
     return entity;
@@ -227,6 +230,13 @@ const gameLoop = (newTime) => {
     world.Step(deltaTime * 0.001, 10, 10);
     world.DrawDebugData();
     world.ClearForces();
+    
+    {
+        let entity;
+        while(entity = removalList.pop()){
+            world.DestroyBody(entity.GetBody());
+        }
+    }
 
     oldTime = newTime;
     window.requestAnimationFrame(gameLoop);
