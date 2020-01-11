@@ -148,7 +148,7 @@ const createBullet = (player) => {
     offset.Multiply(2);
     const power = 10.0;
     velocity.Multiply(power);
-    entity.GetBody().SetLinearVelocity(velocity);
+    entity.GetBody().SetLinearVelocity(b2Math.AddVV(velocity, player.GetBody().GetLinearVelocity()));
     entity.GetBody().SetPosition(b2Math.AddVV(player.GetBody().GetPosition(), offset));
     entity.GetBody().SetAngle(player.GetBody().GetAngle());
     entity.GetBody().SetBullet(true);
@@ -213,7 +213,7 @@ const gameLoop = (newTime) => {
     if (keyPress[" "]) {
         if (weaponCoolDown < 0) {
             createBullet(player);
-            weaponCoolDown = 1000;
+            weaponCoolDown = 200;
         }
     }
 
