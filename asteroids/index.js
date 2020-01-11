@@ -28,18 +28,52 @@ let weaponCoolDown = 0;
 
 bodyDef.type = b2Body.b2_dynamicBody;
 
+class Entity {
+    constructor(fixture, body) {
+        this.fixture = fixture;
+        this.body = body;
+    }
+
+    GetFixture() {
+        return this.fixture;
+    }
+
+    GetBody() {
+        return this.body;
+    }
+
+    Explode() {}
+};
+class Player extends Entity {
+    constructor(fixture, body) {
+        super(fixture, body);
+    }
+};
+
+class Box extends Entity {
+    constructor(fixture, body) {
+        super(fixture, body);
+    }
+
+    Explode() {
+        console.log("explode");
+    }
+};
+
+class Bullet extends Entity {
+    constructor(fixture, body) {
+        super(fixture, body);
+    }
+};
+
 const createBox = (width, height, x, y) => {
     fixDef.shape = new b2PolygonShape;
     fixDef.shape.SetAsBox(width, height);
     bodyDef.position.x = x;
     bodyDef.position.y = y;
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const customEntity = {
-        Explode: () => {
-            console.log("explode");
-        }
-    };
-    fixture.SetUserData(customEntity);
+    const entity = new Box();
+    fixture.SetUserData(entity);
 };
 
 //create some objects
@@ -54,16 +88,7 @@ for (var i = 0; i < 10; i++) {
     bodyDef.position.x = Math.random() * 10;
     bodyDef.position.y = Math.random() * 10;
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const entity = {
-        GetBody: () => {
-            return fixture.GetBody();
-        },
-        GetFixture: () => {
-            return fixture;
-        },
-        Explode: () => {
-        }
-    };
+    const entity = new Box(fixture, fixture.GetBody());
     fixture.SetUserData(entity);
     fixture.GetBody().SetUserData(entity);
 }
@@ -77,14 +102,7 @@ fixDef.shape.SetAsArray([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1
 
 const createPlayer = () => {
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const entity = {
-        GetBody: () => {
-            return fixture.GetBody();
-        },
-        GetFixture: () => {
-            return fixture;
-        },
-    };
+    const entity = new Player(fixture, fixture.GetBody());
     fixture.SetUserData(entity);
     fixture.GetBody().SetUserData(entity);
     return entity;
@@ -99,17 +117,10 @@ const destroyEntity = (entity) => {
 const createBullet = (player) => {
     fixDef.shape = new b2CircleShape(0.1);
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const entity = {
-        GetBody: () => {
-            return fixture.GetBody();
-        },
-        GetFixture: () => {
-            return fixture;
-        },
-    };
+    const entity = new Bullet(fixture, fixture.GetBody())
     fixture.SetUserData(entity);
     fixture.GetBody().SetUserData(entity);
-    
+
     const direction = new b2Vec2(Math.cos(player.GetBody().GetAngle()), Math.sin(player.GetBody().GetAngle()));
     const velocity = direction.Copy();
     const power = 10.0;
@@ -117,7 +128,7 @@ const createBullet = (player) => {
     entity.GetBody().SetLinearVelocity(velocity);
     entity.GetBody().SetPosition(player.GetBody().GetPosition());
     entity.GetBody().SetAngle(player.GetBody().GetAngle());
-    
+
     return entity;
 };
 
@@ -134,12 +145,12 @@ const contactListener = new b2ContactListener();
 contactListener.BeginContact = (contact) => {
     const entityA = contact.GetFixtureA().GetUserData();
     const entityB = contact.GetFixtureB().GetUserData();
-    
-    if(entityA.Explode){
+
+    if (entityA.Explode) {
         entityA.Explode();
     }
-    
-    if(entityB.Explode){
+
+    if (entityB.Explode) {
         entityB.Explode();
     }
 }
@@ -181,11 +192,11 @@ const gameLoop = (newTime) => {
             weaponCoolDown = 1000;
         }
     }
-    
+
     const teleportBorder = () => {
         let body = world.GetBodyList();
-        
-        while(body){
+
+        while (body) {
             const position = body.GetPosition();
             let x = position.x;
             let y = position.y;
@@ -210,7 +221,7 @@ const gameLoop = (newTime) => {
             body = body.GetNext();
         }
     };
-    
+
     teleportBorder();
 
     world.Step(deltaTime * 0.001, 10, 10);
