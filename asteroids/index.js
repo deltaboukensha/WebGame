@@ -27,7 +27,7 @@ const yMin = 0;
 const yMax = 20;
 let weaponCoolDown = 0;
 bodyDef.type = b2Body.b2_dynamicBody;
-const removalList = [];
+const queueAction = [];
 
 class Entity {
     constructor(fixture, body) {
@@ -65,6 +65,25 @@ class RemovalItem {
     }
 }
 
+class DelayAction {
+    constructor(delay, action) {
+        this.action = action;
+        this.delay = delay;
+    }
+    
+    RunAction(){
+        this.action();
+    }
+    
+    GetDelay(){
+        return this.delay;
+    }
+    
+    SetDelay(delay){
+        this.delay = delay;
+    }
+}
+
 class Player extends Entity {
     constructor(fixture, body) {
         super(fixture, body);
@@ -72,12 +91,30 @@ class Player extends Entity {
 };
 
 class Box extends Entity {
-    constructor(fixture, body) {
+    constructor(fixture, body, width, height) {
         super(fixture, body);
+        this.width = width;
+        this.height = height;
+    }
+    
+    GetWidth(){
+        return this.width;
+    }
+    
+    GetHeight(){
+        return this.height;
     }
 
     Explode() {
-        // console.log("explode");
+        const w = this.width;
+        const h = this.height;
+        const x = this.GetBody().GetPosition().x;
+        const y = this.GetBody().GetPosition().y;
+        createBox(w / 2, h / 2, x - w / 2, y - h / 2);
+        createBox(w / 2, h / 2, x + w / 2, y - h / 2);
+        createBox(w / 2, h / 2, x - w / 2, y + h / 2);
+        createBox(w / 2, h / 2, x + w / 2, y + h / 2);
+        removeEntity(this);
     }
 };
 
@@ -87,7 +124,7 @@ class Bullet extends Entity {
     }
     
     Explode() {
-        removalList.push(new RemovalItem(this, 100));
+        removeEntity(this);
     }
 };
 
@@ -97,25 +134,14 @@ const createBox = (width, height, x, y) => {
     bodyDef.position.x = x;
     bodyDef.position.y = y;
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const entity = new Box();
+    const entity = new Box(fixture, fixture.GetBody(), width, height);
     fixture.SetUserData(entity);
+    fixture.GetBody().SetUserData(entity);
 };
 
 //create some objects
 for (var i = 0; i < 10; i++) {
-    if (Math.random() > 0.5) {
-        createBox(Math.random() + 0.1, Math.random() + 0.1, Math.random() * 10, Math.random() * 10);
-    } else {
-        fixDef.shape = new b2CircleShape(
-            Math.random() + 0.1 //radius
-        );
-    }
-    bodyDef.position.x = Math.random() * 10;
-    bodyDef.position.y = Math.random() * 10;
-    const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const entity = new Box(fixture, fixture.GetBody());
-    fixture.SetUserData(entity);
-    fixture.GetBody().SetUserData(entity);
+    createBox(Math.random() + 0.1, Math.random() + 0.1, Math.random() * 10, Math.random() * 10);
 }
 
 //create player
@@ -164,19 +190,49 @@ debugDraw.SetLineThickness(1.0);
 debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
 world.SetDebugDraw(debugDraw);
 
-const contactListener = new b2ContactListener();
+const removeEntity = (entity) => {
+    world.DestroyBody(entity.GetBody());
+};
 
-contactListener.BeginContact = (contact) => {
+const contactBulletBox = (entityA, entityB) => {
+    let bullet;
+    let box;
+    
+    if(entityA instanceof Bullet && entityB instanceof Box){
+        bullet = entityA;
+        box = entityB;
+    }
+    else if(entityA instanceof Box && entityB instanceof Bullet){
+        bullet = entityB;
+        box = entityA;
+    }
+    else{
+        return;
+    }
+    console.log("contactBulletBox");
+    
+    if(box.GetWidth() > 0.1 && box.GetHeight() > 0.1){
+        console.log("explode", box, bullet);
+        queueAction.push(new DelayAction(1000, () => {
+            box.Explode();
+        }));
+    }
+    else{
+        queueAction.push(new DelayAction(0, () => {
+            removeEntity(box);
+        }));
+    }
+    
+    queueAction.push(new DelayAction(0, () => {
+        bullet.Explode();
+    }));
+};
+
+const contactListener = new b2ContactListener();
+contactListener.EndContact = (contact) => {
     const entityA = contact.GetFixtureA().GetUserData();
     const entityB = contact.GetFixtureB().GetUserData();
-
-    if (entityA.Explode) {
-        entityA.Explode();
-    }
-
-    if (entityB.Explode) {
-        entityB.Explode();
-    }
+    contactBulletBox(entityA, entityB);
 }
 
 world.SetContactListener(contactListener);
@@ -252,14 +308,14 @@ const gameLoop = (newTime) => {
     world.DrawDebugData();
     world.ClearForces();
     
-    for (let i = removalList.length - 1; i >= 0; i--) {
-        const removalItem = removalList[i];
-        const delay = removalItem.GetDelay() - deltaTime;
-        removalItem.SetDelay(delay);
+    for (let i = queueAction.length - 1; i >= 0; i--) {
+        const item = queueAction[i];
+        const delay = item.GetDelay() - deltaTime;
+        item.SetDelay(delay);
         
         if(delay < 0){
-            world.DestroyBody(removalItem.GetEntity().GetBody());
-            removalList.splice(i, 1);
+            item.RunAction();
+            queueAction.splice(i, 1);
         }
     }
 
