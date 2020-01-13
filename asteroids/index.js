@@ -129,6 +129,7 @@ class Bullet extends Entity {
 };
 
 const createBox = (width, height, x, y) => {
+    fixDef.density = 1;
     fixDef.shape = new b2PolygonShape;
     fixDef.shape.SetAsBox(width, height);
     bodyDef.position.x = x;
@@ -152,6 +153,7 @@ fixDef.shape = new b2PolygonShape;
 fixDef.shape.SetAsArray([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)], 3);
 
 const createPlayer = () => {
+    fixDef.density = 1;
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
     const entity = new Player(fixture, fixture.GetBody());
     fixture.SetUserData(entity);
@@ -162,6 +164,7 @@ const createPlayer = () => {
 const player = createPlayer();
 
 const createBullet = (player) => {
+    fixDef.density = 100;
     fixDef.shape = new b2CircleShape(0.1);
     const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
     const entity = new Bullet(fixture, fixture.GetBody())
@@ -209,11 +212,9 @@ const contactBulletBox = (entityA, entityB) => {
     else{
         return;
     }
-    console.log("contactBulletBox");
     
     if(box.GetWidth() > 0.1 && box.GetHeight() > 0.1){
-        console.log("explode", box, bullet);
-        queueAction.push(new DelayAction(1000, () => {
+        queueAction.push(new DelayAction(0, () => {
             box.Explode();
         }));
     }
@@ -223,7 +224,7 @@ const contactBulletBox = (entityA, entityB) => {
         }));
     }
     
-    queueAction.push(new DelayAction(0, () => {
+    queueAction.push(new DelayAction(100, () => {
         bullet.Explode();
     }));
 };
