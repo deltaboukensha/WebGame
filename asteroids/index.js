@@ -162,25 +162,69 @@ const createBox = (width, height, x, y) => {
     return entity;
 };
 
+class UnitMaker {
+    constructor() {
+        this.bodyDef = new b2BodyDef;
+        this.bodyDef.type = b2Body.b2_dynamicBody;
+        
+        this.fixDef = new b2FixtureDef;
+        this.fixDef.density = 1;
+    }
+
+    SetSphere() {
+        this.fixDef.shape = new b2CircleShape(0.1);
+    }
+    
+    SetPolygon(list) {
+        this.fixDef.shape = new b2PolygonShape;
+        this.fixDef.shape.SetAsArray(list, list.length);
+    }
+    
+    SetPosition({x, y}){
+        this.bodyDef.position.x = x;
+        this.bodyDef.position.y = y;
+    }
+    
+    SetLinearVelocity({x, y}){
+        this.bodyDef.linearVelocity.x = x;
+        this.bodyDef.linearVelocity.y = y;
+    }
+    
+    SetDamping({linearDamping, angularDamping}){
+        this.bodyDef.linearDamping = linearDamping;
+        this.bodyDef.angularDamping = angularDamping;
+    }
+
+    MakeUnit() {
+        const body = world.CreateBody(this.bodyDef);
+        const fixture = body.CreateFixture(this.fixDef);
+        const unit = new Unit({
+            body,
+            fixture
+        });
+        fixture.SetUserData(unit);
+        body.SetUserData(unit);
+        return unit;
+    }
+};
+
 //create some objects
 for (var i = 0; i < 10; i++) {
     createBox(Math.random() + 0.1, Math.random() + 0.1, Math.random() * 10, Math.random() * 10);
 }
 
-//create player
-bodyDef.position.x = 10;
-bodyDef.position.y = 10;
-fixDef.shape = new b2PolygonShape;
-// fixDef.shape.SetAsBox(0.5, 0.5);
-fixDef.shape.SetAsArray([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)], 3);
-
 const createPlayer = () => {
-    fixDef.density = 1;
-    const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const entity = new Player(fixture, fixture.GetBody());
-    fixture.SetUserData(entity);
-    fixture.GetBody().SetUserData(entity);
-    return entity;
+    const maker = new UnitMaker();
+    maker.SetPolygon([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)]);
+    maker.SetPosition({
+        x: 10,
+        y: 10,
+    });
+    maker.SetDamping({
+        linearDamping: 1,
+        angularDamping: 1,
+    });
+    return maker.MakeUnit();
 };
 
 const player = createPlayer();
@@ -243,48 +287,12 @@ const contactBulletBox = (entityA, entityB) => {
     else{
         queueAction.push(new DelayAction(0, () => {
             removeEntity(box);
-            
         }));
     }
     
     queueAction.push(new DelayAction(0, () => {
         explodeBullet(bullet);
     }));
-};
-class UnitMaker {
-    constructor() {
-        this.bodyDef = new b2BodyDef;
-        this.bodyDef.type = b2Body.b2_dynamicBody;
-        
-        this.fixDef = new b2FixtureDef;
-        this.fixDef.density = 1;
-    }
-
-    SetSphere() {
-        this.fixDef.shape = new b2CircleShape(0.1);
-    }
-    
-    SetPosition({x, y}){
-        this.bodyDef.position.x = x;
-        this.bodyDef.position.y = y;
-    }
-    
-    SetLinearVelocity({x, y}){
-        this.bodyDef.linearVelocity.x = x;
-        this.bodyDef.linearVelocity.y = y;
-    }
-
-    MakeUnit() {
-        const body = world.CreateBody(this.bodyDef);
-        const fixture = body.CreateFixture(this.fixDef);
-        const unit = new Unit({
-            body,
-            fixture
-        });
-        fixture.SetUserData(unit);
-        body.SetUserData(unit);
-        return unit;
-    }
 };
 
 const createSphere = () => {
@@ -316,6 +324,10 @@ const explodeBullet = (bullet) => {
             y: velocity.y + RNG() * 100,
         });
         const unit = maker.MakeUnit();
+        
+        queueAction.push(new DelayAction(100, () => {
+            removeEntity(unit);
+        }));
     }
     
     removeEntity(bullet);
