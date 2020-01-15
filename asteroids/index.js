@@ -46,6 +46,21 @@ class Entity {
     Explode() {}
 };
 
+class Unit {
+    constructor({fixture, body}) {
+        this.fixture = fixture;
+        this.body = body;
+    }
+
+    GetFixture() {
+        return this.fixture;
+    }
+
+    GetBody() {
+        return this.body;
+    }
+};
+
 class RemovalItem {
     constructor(entity, delay) {
         this.entity = entity;
@@ -228,12 +243,82 @@ const contactBulletBox = (entityA, entityB) => {
     else{
         queueAction.push(new DelayAction(0, () => {
             removeEntity(box);
+            
         }));
     }
     
     queueAction.push(new DelayAction(0, () => {
-        removeEntity(bullet);
+        explodeBullet(bullet);
     }));
+};
+class UnitMaker {
+    constructor() {
+        this.bodyDef = new b2BodyDef;
+        this.bodyDef.type = b2Body.b2_dynamicBody;
+        
+        this.fixDef = new b2FixtureDef;
+        this.fixDef.density = 1;
+    }
+
+    SetSphere() {
+        this.fixDef.shape = new b2CircleShape(0.1);
+    }
+    
+    SetPosition({x, y}){
+        this.bodyDef.position.x = x;
+        this.bodyDef.position.y = y;
+    }
+    
+    SetLinearVelocity({x, y}){
+        this.bodyDef.linearVelocity.x = x;
+        this.bodyDef.linearVelocity.y = y;
+    }
+
+    MakeUnit() {
+        const body = world.CreateBody(this.bodyDef);
+        const fixture = body.CreateFixture(this.fixDef);
+        const unit = new Unit({
+            body,
+            fixture
+        });
+        fixture.SetUserData(unit);
+        body.SetUserData(unit);
+        return unit;
+    }
+};
+
+const createSphere = () => {
+    const fixDef = new b2FixtureDef;
+    fixDef.density = 1;
+    fixDef.shape = new b2CircleShape(0.1);
+    const bodyDef = new b2BodyDef;
+    const body = world.CreateBody(bodyDef);
+    const fixture = body.CreateFixture(fixDef);
+    const unit = new Unit({ body, fixture });
+    fixture.SetUserData(unit);
+    fixture.GetBody().SetUserData(unit);
+    return unit;
+};
+
+const RNG = () => {
+    return Math.random() - Math.random();
+};
+
+const explodeBullet = (bullet) => {
+    const maker = new UnitMaker();
+    maker.SetSphere();
+    maker.SetPosition(bullet.GetBody().GetPosition());
+    const velocity = bullet.GetBody().GetLinearVelocity();
+    
+    for(let i=0; i<8; i++){
+        maker.SetLinearVelocity({
+            x: velocity.x + RNG() * 100,
+            y: velocity.y + RNG() * 100,
+        });
+        const unit = maker.MakeUnit();
+    }
+    
+    removeEntity(bullet);
 };
 
 const contactListener = new b2ContactListener();
