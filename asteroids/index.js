@@ -150,6 +150,7 @@ class Bullet extends Entity {
 };
 
 const createBox = (width, height, x, y) => {
+    const maker = new UnitMaker();
     fixDef.density = 1;
     fixDef.shape = new b2PolygonShape;
     fixDef.shape.SetAsBox(width, height);
@@ -173,26 +174,31 @@ class UnitMaker {
 
     SetSphere() {
         this.fixDef.shape = new b2CircleShape(0.1);
+        return this;
     }
     
     SetPolygon(list) {
         this.fixDef.shape = new b2PolygonShape;
         this.fixDef.shape.SetAsArray(list, list.length);
+        return this;
     }
     
     SetPosition({x, y}){
         this.bodyDef.position.x = x;
         this.bodyDef.position.y = y;
+        return this;
     }
     
     SetLinearVelocity({x, y}){
         this.bodyDef.linearVelocity.x = x;
         this.bodyDef.linearVelocity.y = y;
+        return this;
     }
     
     SetDamping({linearDamping, angularDamping}){
         this.bodyDef.linearDamping = linearDamping;
         this.bodyDef.angularDamping = angularDamping;
+        return this;
     }
 
     MakeUnit() {
@@ -215,16 +221,18 @@ for (var i = 0; i < 10; i++) {
 
 const createPlayer = () => {
     const maker = new UnitMaker();
-    maker.SetPolygon([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)]);
-    maker.SetPosition({
+    
+    return maker
+    .SetPolygon([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)])
+    .SetPosition({
         x: 10,
         y: 10,
-    });
-    maker.SetDamping({
+    })
+    .SetDamping({
         linearDamping: 1,
         angularDamping: 1,
-    });
-    return maker.MakeUnit();
+    })
+    .MakeUnit();
 };
 
 const player = createPlayer();
