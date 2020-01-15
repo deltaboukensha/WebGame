@@ -110,10 +110,16 @@ class Box extends Entity {
         const h = this.height;
         const x = this.GetBody().GetPosition().x;
         const y = this.GetBody().GetPosition().y;
-        createBox(w / 2, h / 2, x - w / 2, y - h / 2);
-        createBox(w / 2, h / 2, x + w / 2, y - h / 2);
-        createBox(w / 2, h / 2, x - w / 2, y + h / 2);
-        createBox(w / 2, h / 2, x + w / 2, y + h / 2);
+        var pieces = [
+            createBox(w / 2, h / 2, x - w / 2, y - h / 2),
+            createBox(w / 2, h / 2, x + w / 2, y - h / 2),
+            createBox(w / 2, h / 2, x - w / 2, y + h / 2),
+            createBox(w / 2, h / 2, x + w / 2, y + h / 2),
+        ];
+        pieces.forEach(p => {
+            p.GetBody().SetLinearVelocity(this.GetBody().GetLinearVelocity());
+            p.GetBody().SetAngularVelocity(this.GetBody().GetAngularVelocity());
+        });
         removeEntity(this);
     }
 };
@@ -138,6 +144,7 @@ const createBox = (width, height, x, y) => {
     const entity = new Box(fixture, fixture.GetBody(), width, height);
     fixture.SetUserData(entity);
     fixture.GetBody().SetUserData(entity);
+    return entity;
 };
 
 //create some objects
@@ -224,8 +231,8 @@ const contactBulletBox = (entityA, entityB) => {
         }));
     }
     
-    queueAction.push(new DelayAction(100, () => {
-        bullet.Explode();
+    queueAction.push(new DelayAction(0, () => {
+        removeEntity(bullet);
     }));
 };
 
