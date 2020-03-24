@@ -47,9 +47,10 @@ class Entity {
 };
 
 class Unit {
-    constructor({fixture, body}) {
+    constructor({fixture, body, data}) {
         this.fixture = fixture;
         this.body = body;
+        this.data = data;
     }
 
     GetFixture() {
@@ -58,6 +59,10 @@ class Unit {
 
     GetBody() {
         return this.body;
+    }
+    
+    GetTag() {
+        return this.tag;
     }
 };
 
@@ -151,16 +156,16 @@ class Bullet extends Entity {
 
 const createBox = (width, height, x, y) => {
     const maker = new UnitMaker();
-    fixDef.density = 1;
-    fixDef.shape = new b2PolygonShape;
-    fixDef.shape.SetAsBox(width, height);
-    bodyDef.position.x = x;
-    bodyDef.position.y = y;
-    const fixture = world.CreateBody(bodyDef).CreateFixture(fixDef);
-    const entity = new Box(fixture, fixture.GetBody(), width, height);
-    fixture.SetUserData(entity);
-    fixture.GetBody().SetUserData(entity);
-    return entity;
+    return maker
+        .SetBox({
+            width,
+            height
+        })
+        .SetPosition({
+            x,
+            y
+        })
+        .MakeUnit({name: "rock"});
 };
 
 class UnitMaker {
@@ -174,6 +179,12 @@ class UnitMaker {
 
     SetSphere() {
         this.fixDef.shape = new b2CircleShape(0.1);
+        return this;
+    }
+    
+    SetBox({ width, height }) {
+        this.fixDef.shape = new b2PolygonShape;
+        this.fixDef.shape.SetAsBox(width, height);
         return this;
     }
     
@@ -201,12 +212,13 @@ class UnitMaker {
         return this;
     }
 
-    MakeUnit() {
+    MakeUnit(data) {
         const body = world.CreateBody(this.bodyDef);
         const fixture = body.CreateFixture(this.fixDef);
         const unit = new Unit({
             body,
-            fixture
+            fixture,
+            data
         });
         fixture.SetUserData(unit);
         body.SetUserData(unit);
@@ -221,18 +233,17 @@ for (var i = 0; i < 10; i++) {
 
 const createPlayer = () => {
     const maker = new UnitMaker();
-    
     return maker
-    .SetPolygon([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)])
-    .SetPosition({
-        x: 10,
-        y: 10,
-    })
-    .SetDamping({
-        linearDamping: 1,
-        angularDamping: 1,
-    })
-    .MakeUnit();
+        .SetPolygon([new b2Vec2(0, 0), new b2Vec2(1.5, 0.5), new b2Vec2(0, 1)])
+        .SetPosition({
+            x: 10,
+            y: 10,
+        })
+        .SetDamping({
+            linearDamping: 1,
+            angularDamping: 1,
+        })
+        .MakeUnit();
 };
 
 const player = createPlayer();
@@ -275,11 +286,11 @@ const contactBulletBox = (entityA, entityB) => {
     let bullet;
     let box;
     
-    if(entityA instanceof Bullet && entityB instanceof Box){
+    if(entityA instanceof Bullet && entityB.GetData() == "rock"){
         bullet = entityA;
         box = entityB;
     }
-    else if(entityA instanceof Box && entityB instanceof Bullet){
+    else if(entityA.GetData() == "rock" && entityB instanceof Bullet){
         bullet = entityB;
         box = entityA;
     }
