@@ -15,21 +15,22 @@ const createButton = (pitchOctave) => {
     });
 };
 
-createButton("E4");
-createButton("F4");
-createButton("G4");
+createButton("C3");
+createButton("D3");
+createButton("E3");
+createButton("F3");
+createButton("G3");
 createButton("A4");
 createButton("B4");
+
 createButton("C4");
 createButton("D4");
 createButton("E4");
 createButton("F4");
-createButton("E4");
-createButton("F4");
 createButton("G4");
-createButton("A4");
-createButton("B4");
-createButton("C4");
+createButton("A5");
+createButton("B5");
+
 
 {
     let button = document.createElement("button");
