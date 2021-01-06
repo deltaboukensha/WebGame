@@ -13,6 +13,6 @@ body {
     width: 100vw;
     height: 100vh;
     grid-template-columns: var(--s) var(--s) var(--s) var(--s) var(--s);
-    grid-template-rows: var(--s) var(--s) var(--s);
+    grid-template-rows: var(--s) var(--s) var(--s) var(--s);
     grid-gap: 5px;
 }
