@@ -1,0 +1,18 @@
+:root {
+    --s: 1fr;
+}
+
+html,
+body {
+    padding: 0;
+    margin: 0;
+}
+
+#instrument {
+    display: grid;
+    width: 100vw;
+    height: 100vh;
+    grid-template-columns: var(--s) var(--s) var(--s) var(--s) var(--s);
+    grid-template-rows: var(--s) var(--s) var(--s);
+    grid-gap: 5px;
+}
